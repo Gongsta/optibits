@@ -1,13 +1,16 @@
-from setuptools import setup
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+from setuptools import setup, find_packages
 
 setup(
-    name="custom_fp8",
-    ext_modules=[
-        CUDAExtension(
-            "custom_fp8",
-            ["custom_fp8.cu"],
-        )
+    name="optibits",
+    version="0.1",
+    packages=find_packages(),
+    install_requires=[
+        "torch",
+        "transformers",
+        "datasets",
+        "tqdm",
+        "numpy",
+        "matplotlib",
+        "bitsandbytes",
     ],
-    cmdclass={"build_ext": BuildExtension},
 )
