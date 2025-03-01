@@ -1,3 +1,0 @@
-[submodule "instruct-eval"]
-	path = instruct-eval
-	url = git@github.com:declare-lab/instruct-eval.git
