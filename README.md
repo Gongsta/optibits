@@ -7,6 +7,9 @@ Key features:
 - A custom endpoint to quickly visualize
 - **Plug & Play**: Directly specify models from Hugging Face.
 
+For example, this is the results of running various quantization parameters GPT2. You can replace this with any model from Hugging Face.
+
+![image](plots/gpt2.png)
 
 # 🔗 Get Started
 
