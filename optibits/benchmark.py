@@ -3,46 +3,50 @@ import torch
 
 
 def benchmark_latency(
-    model, tokenizer, device="cuda", batch_size=8, fp16=False, max_new_tokens=50, runs=4
-):
+    model, tokenizer, device="cuda", batch_size=1, runs=8, warmup_runs=2):
     """Benchmark inference speed in a hardware-agnostic way."""
-
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    if fp16 and device == "cuda":
-        model.half()
 
     text = "Hugging Face models are great because"
     batch = [text] * batch_size
     inputs = tokenizer(batch, return_tensors="pt", padding=True, truncation=True).to(device)
 
+    # Warm-up runs to eliminate startup overhead
+    with torch.no_grad():
+        for _ in range(warmup_runs):
+            _ = model.generate(**inputs);
+
     times = []
+    total_tokens_generated = 0
 
     with torch.no_grad():
         for _ in range(runs):
             if device == "cuda":
-                torch.cuda.synchronize()  # Ensure previous CUDA ops are done
+                torch.cuda.current_stream().synchronize()
                 start_time = torch.cuda.Event(enable_timing=True)
                 end_time = torch.cuda.Event(enable_timing=True)
 
                 start_time.record()
-                output = model.generate(**inputs, max_new_tokens=max_new_tokens)
+                output = model.generate(**inputs)
                 end_time.record()
 
-                torch.cuda.synchronize()
+                torch.cuda.current_stream().synchronize()
                 elapsed_time = start_time.elapsed_time(end_time) / 1000  # Convert ms to seconds
             else:
                 start_time = time.perf_counter()
-                output = model.generate(**inputs, max_new_tokens=max_new_tokens)
+                output = model.generate(**inputs)
                 elapsed_time = time.perf_counter() - start_time
 
             times.append(elapsed_time)
+            total_tokens_generated += sum(len(seq) for seq in output)
 
-    generated_texts = tokenizer.batch_decode(output, skip_special_tokens=True)
+    avg_latency = sum(times) / len(times)
+    median_latency = sorted(times)[len(times) // 2]
+    throughput = total_tokens_generated / sum(times)
 
     print(
-        f"Model: {model.name_or_path} | Device: {device} | Batch Size: {batch_size} | FP16: {fp16} | "
-        f"First Inference Time: {times[0]:.4f}s | Average Inference Time: {sum(times[1:])/len(times[1:]):.4f}s"
+        f"Model: {model.name_or_path} | Device: {device} | Batch Size: {batch_size} | "
+        f"Median Latency: {median_latency:.4f}s | Average Latency: {avg_latency:.4f}s | "
+        f"Throughput: {throughput:.2f} tokens/sec"
     )
-    # print(f"Generated Texts: {generated_texts}\n")
+
+    return avg_latency, median_latency, throughput
