@@ -13,7 +13,7 @@ def benchmark_latency(
     # Warm-up runs to eliminate startup overhead
     with torch.no_grad():
         for _ in range(warmup_runs):
-            _ = model.generate(**inputs);
+            _ = model.generate(**inputs, use_cache=False)
 
     times = []
     total_tokens_generated = 0
@@ -26,14 +26,14 @@ def benchmark_latency(
                 end_time = torch.cuda.Event(enable_timing=True)
 
                 start_time.record()
-                output = model.generate(**inputs)
+                output = model.generate(**inputs, use_cache=False)
                 end_time.record()
 
                 torch.cuda.current_stream().synchronize()
                 elapsed_time = start_time.elapsed_time(end_time) / 1000  # Convert ms to seconds
             else:
                 start_time = time.perf_counter()
-                output = model.generate(**inputs)
+                output = model.generate(**inputs, use_cache=False)
                 elapsed_time = time.perf_counter() - start_time
 
             times.append(elapsed_time)
